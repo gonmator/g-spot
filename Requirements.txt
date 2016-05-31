@@ -1,0 +1,4 @@
+pip         8.1.2
+virtualenv  15.0.2
+flask       0.11
+
