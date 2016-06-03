@@ -1,0 +1,7 @@
+{% from "macros.html" import remove_prefix %}
+{% extends "show.html" %}
+{% block show_mode %}
+{% for item in items %}
+    <a href="{{ item }}"><img src="{{ item }}" border="1", class="photo", width="80%"></a><br>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,8 @@
+{% from "macros.html" import min, render_pagination %}
+{% extends "base.html" %}
+{% block content %}
+    From {{ (photos_page.page - 1) * photos_page.per_page + 1 }} to {{ min(photos_page.total, photos_page.page * photos_page.per_page) }} (total: {{ photos_page.total }}).
+    {{ render_pagination(photos_page, 'show', 'big', tags) }}
+    {% block show_mode %}{% endblock %}
+    <hr>
+{% endblock %}
