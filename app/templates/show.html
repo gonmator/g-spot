@@ -1,8 +1,31 @@
-{% from "macros.html" import min, render_pagination %}
+{% from "macros.html" import min, render_pagination, join_items %}
 {% extends "base.html" %}
 {% block content %}
-    From {{ (photos_page.page - 1) * photos_page.per_page + 1 }} to {{ min(photos_page.total, photos_page.page * photos_page.per_page) }} (total: {{ photos_page.total }}).
-    {{ render_pagination(photos_page, 'show', 'big', tags) }}
-    {% block show_mode %}{% endblock %}
-    <hr>
+    <div style="color:white;backgroud-color:black">
+        <div class="tags-tree">
+            <div style="color:Black;background-color:White;font-weight:bold;" align="center">Tags</div>
+            <div style="color:LightGreen;font-weight:bold;" align="center">Selected</div>
+            {%- for tag in selected_tags -%}
+                <p class="item", style="color:White;">
+                    <a href="{{ url_for('show', mode='big', page=1, tags=(selected_tags|reject('equalto', tag)|join(','))) }}" class="button" style="background-color:DarkRed;" align="center">-</a> {{ tag }}
+                </p>
+            {%- endfor %}
+            <div style="color:Red;font-weight:bold;" align="center">Not Selected</div>
+            {%- for tag in all_tags -%}
+                {%- if tag not in selected_tags %}
+                    <p class="item">
+                        <a href="{{ url_for('show', mode='big', page=1, tags=((selected_tags + [tag])|join(','))) }}" class="button" style="background-color:DarkGreen;">+</a> {{ tag }}
+                    </p>
+                {%- endif -%}
+            {%- endfor %}
+        </div>
+        <div class="photo-collection">
+            From {{ (photos_page.page - 1) * photos_page.per_page + 1 }} to {{ min(photos_page.total, photos_page.page * photos_page.per_page) }} (total: {{ photos_page.total }}).
+            {{ render_pagination(photos_page, 'show', 'big', selected_tags) }}
+            <hr>
+            {% block show_mode %}{% endblock %}
+            <hr>
+            {{ render_pagination(photos_page, 'show', 'big', selected_tags) }}
+        </div>
+    </div>
 {% endblock %}

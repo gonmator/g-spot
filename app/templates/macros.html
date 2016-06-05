@@ -10,17 +10,21 @@
     {{ (page - 1) * pagination.per_page + 1 }}
 {%- endmacro -%}
 
+{%- macro join_items(l) -%}
+    {{ l|join(',') }}
+{%- endmacro -%}
+
 {% macro render_pagination(pagination, view, mode, tags) %}
-<div class=pagination>
+<div class="pagination">
 {%- for page in pagination.iter_pages() %}
     {% if page %}
         {% if page != pagination.page -%}
-            <a href="{{ url_for(view, mode=mode, page=page, tags=tags) }}">{{ page_to_item(pagination, page) }}</a>
+            <a href="{{ url_for(view, mode=mode, page=page, tags=(tags|join(','))) }}">{{ page_to_item(pagination, page) }}</a>
         {% else %}
             <strong>{{ page_to_item(pagination, page) }}</strong>
         {%- endif %}
     {% else %}
-        <span class=ellipsis>…</span>
+        <span class="ellipsis">…</span>
     {% endif %}
 {%- endfor %}
 </div>

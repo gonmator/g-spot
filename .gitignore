@@ -64,3 +64,4 @@ target/
 venv/
 /data/photos.db
 /data/repository/
+/app/static/Fotos

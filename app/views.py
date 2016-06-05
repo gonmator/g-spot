@@ -17,8 +17,14 @@ def show():
     ppp = int(request.args.get('ppp', 16))
     page = int(request.args.get('page', 1))
     tags = set(request.args.get('tags', '').split(','))
+    add_tag = request.args.get('add_tag', '')
+    remove_tag = request.args.get('remove_tag', '')
     if '' in tags:
         tags.remove('')
+    if add_tag:
+        tags.add(add_tag)
+    if remove_tag and remove_tag in tags:
+        tags.remove(remove_tag)
 
     aliases = []
     photos = Photos.query
@@ -33,7 +39,10 @@ def show():
     photos_page = photos.paginate(page, ppp)
     items = items_to_show(photos_page)
 
-    return render_template('show_big.html', title='G-Spot', photos_page=photos_page, items=items, tags=list(tags))
+    all_tags = tags_to_show(Tags.query.all())
+
+    return render_template('show_big.html', title='G-Spot', photos_page=photos_page, items=items,
+                           selected_tags=list(tags), all_tags=all_tags)
 
 
 def items_to_show(photos_page):
@@ -57,4 +66,12 @@ def items_to_show(photos_page):
                 to_show.append('static/' + join(path[len(prefix.path):], item.filename))
         else:
             print base_uri
+    return to_show
+
+
+def tags_to_show(tags):
+    to_show = []
+    for tag in tags:
+        to_show.append(tag.name)
+
     return to_show
