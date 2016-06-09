@@ -5,6 +5,7 @@ from urlparse import urlsplit, SplitResult
 from app import app
 from .models import Photos, Tags, db
 
+
 @app.route('/')
 @app.route('/index')
 def index():
@@ -16,33 +17,67 @@ def show():
     mode = request.args.get('mode', 'big')
     ppp = int(request.args.get('ppp', 16))
     page = int(request.args.get('page', 1))
-    tags = set(request.args.get('tags', '').split(','))
-    add_tag = request.args.get('add_tag', '')
-    remove_tag = request.args.get('remove_tag', '')
-    if '' in tags:
-        tags.remove('')
-    if add_tag:
-        tags.add(add_tag)
-    if remove_tag and remove_tag in tags:
-        tags.remove(remove_tag)
+
+    inc_tags = set(request.args.get('inc_tags', '').split(','))
+    en_inc_tag = request.args.get('en_inc_tag', '')
+    dis_inc_tag = request.args.get('dis_inc_tag', '')
+
+    if '' in inc_tags:
+        inc_tags.remove('')
+
+    if en_inc_tag:
+        if en_inc_tag not in inc_tags:
+            inc_tags.add(en_inc_tag)
+    if dis_inc_tag:
+        if dis_inc_tag in inc_tags:
+            inc_tags.remove(dis_inc_tag)
+    if en_inc_tag or dis_inc_tag:
+        return redirect(url_for('show', inc_tags=','.join(inc_tags)))
+
+    all_tags_tree = get_tags_tree()
+
+    tags_to_include = list(inc_tags)
+    for tag in inc_tags:
+        tags_to_include += get_sub_tags(all_tags_tree, tag)
 
     aliases = []
     photos = Photos.query
-    for tag in tags:
+    for tag in enumerate(tags_to_include):
         aliases.append(db.aliased(Tags))
         photos = photos.join(aliases[-1], Photos.tags)
-        print aliases[-1]
-    print photos
-    for i, tag in enumerate(tags):
+    for i, tag in enumerate(tags_to_include):
         photos = photos.filter(aliases[i].name == tag)
 
     photos_page = photos.paginate(page, ppp)
     items = items_to_show(photos_page)
 
-    all_tags = tags_to_show(Tags.query.all())
+    # all_tags = tags_to_show(Tags.query.all())
 
     return render_template('show_big.html', title='G-Spot', photos_page=photos_page, items=items,
-                           selected_tags=list(tags), all_tags=all_tags)
+                           all_tags_tree=all_tags_tree, inc_tags=list(inc_tags))
+
+
+def find_tree(tags_tree, tag, ix=0):
+    for tag_info in tags_tree:
+        if tag_info['name'] == tag:
+            return tag_info
+        else:
+            tree = find_tree(tag_info['children'], tag, ix+1)
+            if tree:
+                return tree
+    return {}
+
+
+def get_sub_tags(tags_tree, tag):
+    sub_tags = []
+    tag_info = find_tree(tags_tree, tag)
+    if tag_info:
+        for sub_tag_info in tag_info['children']:
+            sub_tags.append(sub_tag_info['name'])
+            sub_sub_tags = get_sub_tags(sub_tag_info['children'], sub_tag_info['name'])
+            sub_tags += sub_sub_tags
+    return sub_tags
+
 
 
 def items_to_show(photos_page):
@@ -69,9 +104,10 @@ def items_to_show(photos_page):
     return to_show
 
 
-def tags_to_show(tags):
-    to_show = []
+def get_tags_tree(index=0):
+    tags = [{'id': tag.id, 'name': tag.name, 'category_id': tag.category_id}
+            for tag in Tags.query.filter_by(category_id=index).all()]
     for tag in tags:
-        to_show.append(tag.name)
+        tag['children'] = get_tags_tree(tag['id'])
+    return tags
 
-    return to_show
