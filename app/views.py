@@ -36,17 +36,14 @@ def show():
 
     all_tags_tree = get_tags_tree()
 
-    tags_to_include = list(inc_tags)
+    tags_to_include = {}
     for tag in inc_tags:
-        tags_to_include += get_sub_tags(all_tags_tree, tag)
+        tags_to_include[tag] = get_sub_tags(all_tags_tree, tag)
 
-    aliases = []
     photos = Photos.query
-    for tag in enumerate(tags_to_include):
-        aliases.append(db.aliased(Tags))
-        photos = photos.join(aliases[-1], Photos.tags)
-    for i, tag in enumerate(tags_to_include):
-        photos = photos.filter(aliases[i].name == tag)
+    for tag in inc_tags:
+        photos = photos.filter(Photos.tags.any(Tags.name.in_([tag] + tags_to_include[tag])))
+    photos = photos.order_by(Photos.time)
 
     photos_page = photos.paginate(page, ppp)
     items = items_to_show(photos_page)
@@ -79,26 +76,31 @@ def get_sub_tags(tags_tree, tag):
     return sub_tags
 
 
-
 def items_to_show(photos_page):
     def qn(s):
         return unquote(s.encode('utf-8'))
 
     def norm_uri(s):
         u = urlsplit(s)
-        return SplitResult(qn(u.scheme), qn(u.netloc), qn(u.path), qn(u.query), '')
+        result = SplitResult(qn(u.scheme), qn(u.netloc), qn(u.path), qn(u.query), '')
+        return result
 
     prefix = norm_uri(app.config['FSPOT_PHOTOS_LOCATION_PREFIX'])
     to_show = []
     for item in photos_page.items:
+        photo = {}
         base_uri = norm_uri(item.base_uri)
         path = base_uri.path
         if prefix.scheme == base_uri.scheme and prefix.netloc == base_uri.netloc and path.find(prefix.path) == 0:
             s = join(path[len(prefix.path):], item.filename)
             if s[0] == '/':
-                to_show.append('static' + join(path[len(prefix.path):], item.filename))
+                photo['path'] = 'static' + join(path[len(prefix.path):], item.filename)
             else:
-                to_show.append('static/' + join(path[len(prefix.path):], item.filename))
+                photo['path'] = 'static/' + join(path[len(prefix.path):], item.filename)
+            photo['tags'] = []
+            for tag in item.tags:
+                photo['tags'].append(tag.name)
+            to_show.append(photo)
         else:
             print base_uri
     return to_show
