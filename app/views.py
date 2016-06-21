@@ -14,49 +14,74 @@ def index():
 
 @app.route('/show')
 def show():
+    def get_tag(attr_name):
+        attr_value = request.args.get(attr_name)
+        if attr_value:
+            return int(attr_value)
+        return None
+
+    def get_tag_list(attr_name):
+        attr_values = request.args.get(attr_name)
+        if attr_values:
+            return set(map(lambda s: int(s), attr_values.split(',')))
+        return set()
+
+    def update_tag_list(fw_tags, bw_tags, en_fw_tag, dis_fw_tag):
+        if en_fw_tag is not None:
+            if en_fw_tag not in fw_tags:
+                fw_tags.add(en_fw_tag)
+            if en_fw_tag in bw_tags:
+                bw_tags.remove(en_fw_tag)
+        if dis_fw_tag is not None:
+            if dis_fw_tag in fw_tags:
+                fw_tags.remove(dis_fw_tag)
+        assert dis_fw_tag not in bw_tags
+
     mode = request.args.get('mode', 'big')
     ppp = int(request.args.get('ppp', 16))
     page = int(request.args.get('page', 1))
 
-    inc_tags = set(request.args.get('inc_tags', '').split(','))
-    en_inc_tag = request.args.get('en_inc_tag', '')
-    dis_inc_tag = request.args.get('dis_inc_tag', '')
+    inc_tags = get_tag_list('inc_tags')
+    exc_tags = get_tag_list('exc_tags')
+    en_inc_tag = get_tag('en_inc_tag')
+    dis_inc_tag = get_tag('dis_inc_tag')
+    en_exc_tag = get_tag('en_exc_tag')
+    dis_exc_tag = get_tag('dis_exc_tag')
 
-    if '' in inc_tags:
-        inc_tags.remove('')
+    update_tag_list(inc_tags, exc_tags, en_inc_tag, dis_inc_tag)
+    update_tag_list(exc_tags, inc_tags, en_exc_tag, dis_exc_tag)
 
-    if en_inc_tag:
-        if en_inc_tag not in inc_tags:
-            inc_tags.add(en_inc_tag)
-    if dis_inc_tag:
-        if dis_inc_tag in inc_tags:
-            inc_tags.remove(dis_inc_tag)
-    if en_inc_tag or dis_inc_tag:
-        return redirect(url_for('show', inc_tags=','.join(inc_tags)))
+    print en_exc_tag, dis_exc_tag, en_exc_tag, dis_exc_tag
+    if en_inc_tag is not None or dis_inc_tag is not None or en_exc_tag is not None or dis_exc_tag is not None:
+        return redirect(url_for('show', inc_tags=','.join(inc_tags), exc_tags=','.join(exc_tags)))
 
     all_tags_tree = get_tags_tree()
 
     tags_to_include = {}
     for tag in inc_tags:
         tags_to_include[tag] = get_sub_tags(all_tags_tree, tag)
+    tags_to_exclude = {}
+    for tag in exc_tags:
+        tags_to_exclude[tag] = get_sub_tags(all_tags_tree, tag)
 
     photos = Photos.query
     for tag in inc_tags:
         photos = photos.filter(Photos.tags.any(Tags.name.in_([tag] + tags_to_include[tag])))
     photos = photos.order_by(Photos.time)
+    for tag in exc_tags:
+        photos = photos.filter(~Photos.tags.any(Tags.name == tag))
+    print photos
 
     photos_page = photos.paginate(page, ppp)
     items = items_to_show(photos_page)
 
-    # all_tags = tags_to_show(Tags.query.all())
-
     return render_template('show_big.html', title='G-Spot', photos_page=photos_page, items=items,
-                           all_tags_tree=all_tags_tree, inc_tags=list(inc_tags))
+                           all_tags_tree=all_tags_tree, inc_tags=list(inc_tags), exc_tags=list(exc_tags))
 
 
 def find_tree(tags_tree, tag, ix=0):
     for tag_info in tags_tree:
-        if tag_info['name'] == tag:
+        if tag_info['id'] == tag:
             return tag_info
         else:
             tree = find_tree(tag_info['children'], tag, ix+1)
@@ -70,8 +95,8 @@ def get_sub_tags(tags_tree, tag):
     tag_info = find_tree(tags_tree, tag)
     if tag_info:
         for sub_tag_info in tag_info['children']:
-            sub_tags.append(sub_tag_info['name'])
-            sub_sub_tags = get_sub_tags(sub_tag_info['children'], sub_tag_info['name'])
+            sub_tags.append(sub_tag_info['id'])
+            sub_sub_tags = get_sub_tags(sub_tag_info['children'], sub_tag_info['id'])
             sub_tags += sub_sub_tags
     return sub_tags
 

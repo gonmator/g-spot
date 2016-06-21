@@ -3,20 +3,28 @@
 
 {% macro render_tags_tree(tags_tree, inc_tags, indent) -%}
     {%- for tag in tags_tree recursive -%}
-        {%- if tag['name'] in inc_tags %}
+        {%- if tag['name'] in inc_tags or tag['name'] in exc_tags -%}
             <p class="enabled-item" style="padding-left:{{ 20 * loop.depth0 }}px">
-                <a href="{{ url_for('show', mode='big', page=1, inc_tags=(inc_tags|join(',')), dis_inc_tag=tag['name']) }}"
-                   class="enabled-button" style="background-color:DarkGreen;">-</a> {{ tag['name'] }}
-            </p>
-        {%- else %}
+        {%- else -%}
             <p class="disabled-item" style="padding-left:{{ 20 * loop.depth0 }}px">
-                <a href="{{ url_for('show', mode='big', page=1, inc_tags=(inc_tags|join(',')), en_inc_tag=tag['name']) }}"
-                   class="disabled-button" style="background-color:DarkGreen;">+</a> {{ tag['name'] }}
+        {%- endif -%}
+        {%- if tag['name'] in inc_tags %}
+                <a href="{{ url_for('show', mode='big', page=1, inc_tags=(inc_tags|join(',')), exc_tags=(exc_tags|join(',')), dis_inc_tag=tag['id']) }}"
+                   class="enabled-button" style="background-color:DarkGreen;">-</a>
+        {%- else -%}
+                <a href="{{ url_for('show', mode='big', page=1, inc_tags=(inc_tags|join(',')), exc_tags=(exc_tags|join(',')), en_inc_tag=tag['id']) }}"
+                   class="disabled-button" style="background-color:DarkGreen;">+</a>
+        {%- endif -%}
+        {%- if tag['name'] in exc_tags %}
+                <a href="{{ url_for('show', mode='big', page=1, inc_tags=(inc_tags|join(',')), exc_tags=(exc_tags|join(',')), dis_exc_tag=tag['id']) }}"
+                   class="enabled-button" style="background-color:DarkRed;">-</a>
+        {%- else -%}
+                <a href="{{ url_for('show', mode='big', page=1, inc_tags=(inc_tags|join(',')), exc_tags=(exc_tags|join(',')), en_exc_tag=tag['id']) }}"
+                   class="disabled-button" style="background-color:DarkRed;">+</a>
+        {%- endif %}
+                {{ tag['name'] }}
             </p>
-        {%- endif -%}
-        {%- if indent <= 0 %}
-            {{ loop(tag['children']) }}
-        {%- endif -%}
+        {{ loop(tag['children']) }}
     {%- endfor %}
 {%- endmacro -%}
 
